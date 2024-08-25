@@ -50,7 +50,7 @@ todosApi.MapGet("/{id}", (int id) =>
         : Results.NotFound());
 
 var ghApi = app.MapGroup("/gh/v1");
-ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nats, string owner, string repo, string version) =>
+ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (ILogger log, INatsConnection nats, string owner, string repo, string version) =>
 {
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
@@ -70,6 +70,8 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
     {
         if (e is NatsKVKeyNotFoundException or NatsKVKeyDeletedException)
         {
+            log.LogInformation($"Not found {owner}/{repo}/{version}");
+            
             if (version == "latest")
             {
                 var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
@@ -84,7 +86,6 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
             else
             {
                 var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases"));
-
 
                 var jsonArray = json?.AsArray() ?? [];
                 List<string> tags = new();
