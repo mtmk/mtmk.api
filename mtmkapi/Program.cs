@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging.Console;
 using NATS.Client.Core;
@@ -48,16 +50,40 @@ todosApi.MapGet("/{id}", (int id) =>
         : Results.NotFound());
 
 var ghApi = app.MapGroup("/gh/v1");
-ghApi.MapGet("/{owner}/{repo}/{cmd}", async (INatsConnection nats, string owner, string repo, string cmd) =>
+ghApi.MapGet("releases/{owner}/{repo}/{cmd}", async (INatsConnection nats, string owner, string repo, string cmd) =>
 {
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
-    var entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{cmd}");
-    
-    return Results.Text($"Hello from GitHub API v1! k={gitHubApiKey} owner: {owner}, repo: {repo}, cmd: {cmd} e={entry.Value}");
+    NatsKVEntry<string> entry;
+    try
+    {
+        entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{cmd}");
+    }
+    catch (NatsKVKeyNotFoundException)
+    {
+        var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{cmd}"));
+        await store.PutAsync($"{owner}/{repo}/{cmd}", json.ToString());
+        return Results.Text(json.ToString());
+    }
+
+    return Results.Text(entry.Value);
 });
 
 app.Run();
+
+return;
+
+async Task<string> GetGitHubDataAsync(string endpoint)
+{
+    using var client = new HttpClient();
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", gitHubApiKey);
+    client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("YourApp", "1.0"));
+
+    var response = await client.GetAsync($"https://api.github.com/{endpoint}");
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadAsStringAsync();
+}
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 
