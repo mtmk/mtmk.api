@@ -33,7 +33,7 @@ builder.Services.AddNatsClient();
 
 var app = builder.Build();
 
-var logger = app.Services.GetRequiredService<ILogger>();
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 var sampleTodos = new Todo[]
 {
