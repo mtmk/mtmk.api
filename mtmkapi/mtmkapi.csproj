@@ -6,6 +6,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
         <PublishAot>true</PublishAot>
+        <StripSymbols>false</StripSymbols>
+        <IsAotCompatible>true</IsAotCompatible>
+        <WarningsAsErrors>true</WarningsAsErrors>
+        <OptimizationPreference>Speed</OptimizationPreference>
     </PropertyGroup>
 
 </Project>
