@@ -54,7 +54,7 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (ILogger log, INatsC
 {
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
-    NatsKVEntry<string> entry;
+    
     var key = $"ver/{owner}/{repo}/{version}";
     var keyTime = $"ver-time/{owner}/{repo}/{version}";
     try
@@ -64,7 +64,8 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (ILogger log, INatsC
             await store.DeleteAsync(key);
             throw new NatsKVKeyNotFoundException();
         }
-        entry = await store.GetEntryAsync<string>(key);
+        var entry = await store.GetEntryAsync<string>(key);
+        return Results.Text(entry.Value);
     }
     catch (Exception e)
     {
@@ -108,8 +109,6 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (ILogger log, INatsC
 
         throw;
     }
-
-    return Results.Text(entry.Value);
 });
 
 app.Run();
