@@ -10,7 +10,11 @@ builder.Logging.AddConsole(options =>
     options.FormatterName = "SystemdLogFormatter";
 });
 
+#pragma warning disable IL3050
+#pragma warning disable IL2026
 builder.Logging.AddConsoleFormatter<SystemdLogFormatter, ConsoleFormatterOptions>();
+#pragma warning restore IL2026
+#pragma warning restore IL3050
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
