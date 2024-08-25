@@ -55,9 +55,16 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
     NatsKVEntry<string> entry;
+    var key = $"ver/{owner}/{repo}/{version}";
+    var keyTime = $"ver-time/{owner}/{repo}/{version}";
     try
     {
-        entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{version}");
+        if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (await store.GetEntryAsync<long>(keyTime)).Value > 300)
+        {
+            await store.DeleteAsync(key);
+            throw new NatsKVKeyNotFoundException();
+        }
+        entry = await store.GetEntryAsync<string>(key);
     }
     catch (Exception e)
     {
@@ -69,7 +76,8 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
 
                 if (json?["tag_name"]?.GetValue<string>() is { } tagName)
                 {
-                    await store.PutAsync($"{owner}/{repo}/{version}", tagName);
+                    await store.PutAsync(key, tagName);
+                    await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                     return Results.Text(tagName);
                 }
             }
@@ -82,16 +90,17 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
                 List<string> tags = new();
                 foreach (var node in jsonArray)
                 {
-                    if (node?["tag_name"]?.GetValue<string>() is { } tagName)
+                    if (node?["tag_name"]?.GetValue<string>() is { } tagName && tagName.StartsWith(version))
                     {
                         tags.Add(tagName);
-                        await store.PutAsync($"{owner}/{repo}/{version}", tagName);
+                        await store.PutAsync(key, tagName);
+                        await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                         return Results.Text(tagName);
                     }
                 }
                 tags.Sort();
                 var versionTagName = tags.First();
-                await store.PutAsync($"{owner}/{repo}/{version}", versionTagName);
+                await store.PutAsync(key, versionTagName);
                 return Results.Text(versionTagName);
             }
         }
