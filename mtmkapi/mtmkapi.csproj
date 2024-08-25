@@ -12,4 +12,9 @@
         <OptimizationPreference>Speed</OptimizationPreference>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="NATS.Extensions.Microsoft.DependencyInjection" Version="2.3.3" />
+      <PackageReference Include="NATS.Net" Version="2.3.3" />
+    </ItemGroup>
+
 </Project>

@@ -1,5 +1,9 @@
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging.Console;
+using NATS.Client.Core;
+using NATS.Client.JetStream;
+using NATS.Client.KeyValueStore;
+using NATS.Extensions.Microsoft.DependencyInjection;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -21,6 +25,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
+var gitHubApiKey = File.ReadLines("gh.key").First();
+
+builder.Services.AddNatsClient();
+
 var app = builder.Build();
 
 var sampleTodos = new Todo[]
@@ -40,10 +48,13 @@ todosApi.MapGet("/{id}", (int id) =>
         : Results.NotFound());
 
 var ghApi = app.MapGroup("/gh/v1");
-ghApi.MapGet("/{owner}/{repo}/{cmd}", (string owner, string repo, string cmd) =>
+ghApi.MapGet("/{owner}/{repo}/{cmd}", async (INatsConnection nats, string owner, string repo, string cmd) =>
 {
-    var key = File.ReadLines("gh.key").First();
-    return Results.Text($"Hello from GitHub API v1! k={key} owner: {owner}, repo: {repo}, cmd: {cmd}");
+    var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
+    var store = await kv.CreateStoreAsync("gh");
+    var entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{cmd}");
+    
+    return Results.Text($"Hello from GitHub API v1! k={gitHubApiKey} owner: {owner}, repo: {repo}, cmd: {cmd} e={entry.Value}");
 });
 
 app.Run();
