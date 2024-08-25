@@ -1,6 +1,16 @@
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging.Console;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+// Configure logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(options =>
+{
+    options.FormatterName = "SystemdLogFormatter";
+});
+
+builder.Logging.AddConsoleFormatter<SystemdLogFormatter, ConsoleFormatterOptions>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
