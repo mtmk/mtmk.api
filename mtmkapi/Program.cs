@@ -74,6 +74,12 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
             throw new NatsKVKeyNotFoundException();
         }
         var entry = await store.GetEntryAsync<string>(key);
+        
+        if (entry.Value == "__not_found__")
+        {
+            return Results.NotFound();
+        }
+        
         return Results.Text(entry.Value);
     }
     catch (Exception e)
@@ -110,7 +116,14 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
                     }
                 }
                 tags.Sort();
-                var versionTagName = tags.First();
+                var versionTagName = tags.FirstOrDefault();
+                if (versionTagName == null)
+                {
+                    await store.PutAsync(key, "__not_found__");
+                    await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    return Results.NotFound();
+                }
+                
                 await store.PutAsync(key, versionTagName);
                 return Results.Text(versionTagName);
             }
