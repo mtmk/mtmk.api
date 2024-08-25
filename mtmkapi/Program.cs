@@ -59,11 +59,20 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
     {
         entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{version}");
     }
-    catch (NatsKVKeyNotFoundException)
+    catch (Exception e)
     {
-        var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
-        await store.PutAsync($"{owner}/{repo}/{version}", json.ToString());
-        return Results.Text(json.ToString());
+        if (e is NatsKVKeyNotFoundException or NatsKVKeyDeletedException)
+        {
+            var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
+
+            if (json?["tag_name"]?.GetValue<string>() is { } tagName)
+            {
+                await store.PutAsync($"{owner}/{repo}/{version}", tagName);
+                return Results.Text(json.ToString());
+            }
+        }
+
+        throw;
     }
 
     return Results.Text(entry.Value);
