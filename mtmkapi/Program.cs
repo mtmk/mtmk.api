@@ -28,6 +28,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 var gitHubApiKey = File.ReadLines("gh.key").First();
+var reposAllowed = File.ReadLines("repos.txt").ToHashSet();
 
 builder.Services.AddNatsClient();
 
@@ -54,6 +55,11 @@ todosApi.MapGet("/{id}", (int id) =>
 var ghApi = app.MapGroup("/gh/v1");
 ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nats, string owner, string repo, string version) =>
 {
+    if (!reposAllowed.Contains($"{owner}/{repo}"))
+    {
+        return Results.NotFound();
+    }
+    
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
     
