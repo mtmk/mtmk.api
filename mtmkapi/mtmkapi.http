@@ -1,0 +1,11 @@
+@mtmkapi_HostAddress = http://localhost:5000
+
+GET {{mtmkapi_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{mtmkapi_HostAddress}}/todos/1
+Accept: application/json
+
+###
