@@ -63,12 +63,36 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
     {
         if (e is NatsKVKeyNotFoundException or NatsKVKeyDeletedException)
         {
-            var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
-
-            if (json?["tag_name"]?.GetValue<string>() is { } tagName)
+            if (version == "latest")
             {
-                await store.PutAsync($"{owner}/{repo}/{version}", tagName);
-                return Results.Text(json.ToString());
+                var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
+
+                if (json?["tag_name"]?.GetValue<string>() is { } tagName)
+                {
+                    await store.PutAsync($"{owner}/{repo}/{version}", tagName);
+                    return Results.Text(tagName);
+                }
+            }
+            else
+            {
+                var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases"));
+
+
+                var jsonArray = json?.AsArray() ?? [];
+                List<string> tags = new();
+                foreach (var node in jsonArray)
+                {
+                    if (node?["tag_name"]?.GetValue<string>() is { } tagName)
+                    {
+                        tags.Add(tagName);
+                        await store.PutAsync($"{owner}/{repo}/{version}", tagName);
+                        return Results.Text(tagName);
+                    }
+                }
+                tags.Sort();
+                var versionTagName = tags.First();
+                await store.PutAsync($"{owner}/{repo}/{version}", versionTagName);
+                return Results.Text(versionTagName);
             }
         }
 
