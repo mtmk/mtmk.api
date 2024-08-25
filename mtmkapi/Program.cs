@@ -61,7 +61,7 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
     var keyTime = $"ver-time/{owner}/{repo}/{version}";
     try
     {
-        if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (await store.GetEntryAsync<long>(keyTime)).Value > 300)
+        if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (await store.GetEntryAsync<long>(keyTime)).Value > 3600)
         {
             await store.DeleteAsync(key);
             throw new NatsKVKeyNotFoundException();
