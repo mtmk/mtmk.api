@@ -42,7 +42,8 @@ todosApi.MapGet("/{id}", (int id) =>
 var ghApi = app.MapGroup("/gh/v1");
 ghApi.MapGet("/{owner}/{repo}/{cmd}", (string owner, string repo, string cmd) =>
 {
-    return Results.Text($"Hello from GitHub API v1! owner: {owner}, repo: {repo}, cmd: {cmd}");
+    var key = File.ReadLines("gh.key").First();
+    return Results.Text($"Hello from GitHub API v1! k={key} owner: {owner}, repo: {repo}, cmd: {cmd}");
 });
 
 app.Run();
