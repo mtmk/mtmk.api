@@ -119,6 +119,8 @@ return;
 
 async Task<string> GetGitHubDataAsync(string endpoint)
 {
+    logger.LogInformation($"GitHub API call {endpoint}");
+    
     using var client = new HttpClient();
     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", gitHubApiKey);
