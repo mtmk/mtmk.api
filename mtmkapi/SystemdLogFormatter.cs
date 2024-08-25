@@ -10,10 +10,11 @@ public class SystemdLogFormatter : ConsoleFormatter
     public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider? scopeProvider, TextWriter textWriter)
     {
         string message = logEntry.Formatter(logEntry.State, logEntry.Exception);
-        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        // string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
         string logLevel = GetShortLogLevel(logEntry.LogLevel);
 
-        textWriter.Write($"{timestamp} <{logLevel}> {message}");
+        // textWriter.Write($"{timestamp} <{logLevel}> {message}");
+        textWriter.Write($"<{logLevel}> {message}");
 
         if (logEntry.Exception != null)
         {
