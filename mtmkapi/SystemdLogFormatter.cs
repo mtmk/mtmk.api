@@ -7,7 +7,7 @@ public class SystemdLogFormatter : ConsoleFormatter
 {
     public SystemdLogFormatter() : base("SystemdLogFormatter") { }
 
-    public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider scopeProvider, TextWriter textWriter)
+    public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider? scopeProvider, TextWriter textWriter)
     {
         string message = logEntry.Formatter(logEntry.State, logEntry.Exception);
         string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
