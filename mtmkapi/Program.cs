@@ -50,19 +50,19 @@ todosApi.MapGet("/{id}", (int id) =>
         : Results.NotFound());
 
 var ghApi = app.MapGroup("/gh/v1");
-ghApi.MapGet("releases/{owner}/{repo}/{cmd}", async (INatsConnection nats, string owner, string repo, string cmd) =>
+ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nats, string owner, string repo, string version) =>
 {
     var kv = new NatsKVContext(new NatsJSContext((NatsConnection)nats));
     var store = await kv.CreateStoreAsync("gh");
     NatsKVEntry<string> entry;
     try
     {
-        entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{cmd}");
+        entry = await store.GetEntryAsync<string>($"{owner}/{repo}/{version}");
     }
     catch (NatsKVKeyNotFoundException)
     {
-        var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{cmd}"));
-        await store.PutAsync($"{owner}/{repo}/{cmd}", json.ToString());
+        var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases/{version}"));
+        await store.PutAsync($"{owner}/{repo}/{version}", json.ToString());
         return Results.Text(json.ToString());
     }
 
