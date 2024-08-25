@@ -57,6 +57,7 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
 {
     if (!reposAllowed.Contains($"{owner}/{repo}"))
     {
+        logger.LogWarning($"Unauthorized {owner}/{repo}");
         return Results.NotFound();
     }
     
