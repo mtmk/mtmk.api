@@ -123,6 +123,7 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
                 var versionTagName = tags.FirstOrDefault();
                 if (versionTagName == null)
                 {
+                    logger.LogWarning($"Not found version '{version}' not found in repo {owner}/{repo}");
                     await store.PutAsync(key, "__not_found__");
                     await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                     return Results.NotFound();
