@@ -99,6 +99,10 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
                     return Results.Text(tagName);
                 }
             }
+            else if (version == "main")
+            {
+                return Results.Text("main");
+            }
             else
             {
                 var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases"));
