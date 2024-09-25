@@ -1,11 +1,26 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging.Console;
+using mtmkapi;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.KeyValueStore;
 using NATS.Extensions.Microsoft.DependencyInjection;
+
+// await foreach (var node in GitHubReleasesFetcher.RunAsync(
+//                    File.ReadLines("c:/users/mtmk/.keys/gh.key").First(),
+//                    "nats-io",
+//                    "nats-server"))
+// {
+//     var value = node["tag_name"]!.GetValue<string>();
+//     var compversion = ComparedVersion(value);
+//
+//     Console.WriteLine(compversion);
+// }
+// return;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -27,6 +42,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
+var versionComparer = new VersionComparer();
 var gitHubApiKey = File.ReadLines("gh.key").First();
 var reposAllowed = File.ReadLines("repos.txt").ToHashSet();
 
@@ -105,22 +121,19 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
             }
             else
             {
-                var json = JsonNode.Parse(await GetGitHubDataAsync($"repos/{owner}/{repo}/releases"));
-
-                var jsonArray = json?.AsArray() ?? [];
                 List<string> tags = new();
-                foreach (var node in jsonArray)
+                await foreach (var node in GitHubReleasesFetcher.RunAsync(gitHubApiKey, owner, repo))
                 {
                     if (node?["tag_name"]?.GetValue<string>() is { } tagName && tagName.StartsWith(version))
                     {
                         tags.Add(tagName);
-                        await store.PutAsync(key, tagName);
-                        await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                        return Results.Text(tagName);
                     }
                 }
-                tags.Sort();
-                var versionTagName = tags.FirstOrDefault();
+                
+                var versionTagName = tags
+                    .OrderDescending(versionComparer)
+                    .FirstOrDefault();
+                
                 if (versionTagName == null)
                 {
                     logger.LogWarning($"Not found version '{version}' not found in repo {owner}/{repo}");
@@ -130,6 +143,10 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
                 }
                 
                 await store.PutAsync(key, versionTagName);
+                await store.PutAsync(keyTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                logger.LogInformation($"Found version '{version}' as '{versionTagName}' in repo {owner}/{repo}");
+                
                 return Results.Text(versionTagName);
             }
         }
@@ -156,9 +173,56 @@ async Task<string> GetGitHubDataAsync(string endpoint)
     return await response.Content.ReadAsStringAsync();
 }
 
+
+
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 
 [JsonSerializable(typeof(Todo[]))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
+}
+
+class VersionComparer : IComparer<string>
+{
+    public int Compare(string? x, string? y)
+    {
+        return string.Compare(ComparedVersion(x), ComparedVersion(x), StringComparison.Ordinal);
+    }
+    
+    string ComparedVersion(string? version)
+    {
+        if (version == null)
+        {
+            return "";
+        }
+        
+        version = version.Replace("v", "");
+        var strings = version.Split('.');
+        var v = new StringBuilder();
+        foreach (var n in strings)
+        {
+            if (Regex.IsMatch(n, @"^\d+$"))
+            {
+                v.Append($"{n.PadLeft(4, '0')}");
+                continue;
+            }
+
+            if (n.Contains("-"))
+            {
+                foreach (var s in n.Split("-"))
+                {
+                    if (Regex.IsMatch(s, @"^\d+$"))
+                    {
+                        v.Append($"{s.PadLeft(4, '0')}");
+                    }
+                    else
+                    {
+                        v.Append($"-{s}");
+                    }
+                }
+            }
+        }
+
+        return v.ToString();
+    }
 }
