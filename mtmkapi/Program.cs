@@ -151,6 +151,8 @@ ghApi.MapGet("releases/tag/{owner}/{repo}/{version}", async (INatsConnection nat
             }
         }
 
+        logger.LogError($"Error in key: '{key}'");
+        
         throw;
     }
 });
